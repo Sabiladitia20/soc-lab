@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String        @id @default(cuid())
+  email     String        @unique
+  name      String?
+  createdAt DateTime      @default(now())
+  progress  Progress[]
+  attempts  QuizAttempt[]
+}
+
+model Article {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  category  String
+  content   String   // MDX content
+  createdAt DateTime @default(now())
+}
+
+model QuizQuestion {
+  id          String   @id @default(cuid())
+  question    String
+  options     String
+  answerIndex Int
+  explanation String
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  score     Int
+  createdAt DateTime @default(now())
+}
+
+model Incident {
+  id              String   @id @default(cuid())
+  severity        String   // Low, Medium, High, Critical
+  title           String
+  status          String   @default("New") // New, Acknowledged, Closed
+  sla             String   @default("OK")  // OK, Breached
+  assignee        String?
+  alerts          Int      @default(1)
+  sourceIp        String?
+  ruleId          String?
+  ruleName        String?
+  mitreTechnique  String?
+  rawDetails      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Progress {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  module    String   // phishing, quiz, checker
+  status    String   // completed, in-progress
+  score     Int?
+}
+
+model EmailTemplate {
+  id         String   @id @default(cuid())
+  name       String
+  category   String
+  difficulty String   // Easy, Medium, Hard
+  sender     String
+  subject    String
+  bodyHtml   String
+  createdAt  DateTime @default(now())
+  campaigns  Campaign[]
+}
+
+model LandingPageTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  category    String
+  htmlContent String
+  createdAt   DateTime @default(now())
+  campaigns   Campaign[]
+}
+
+model Campaign {
+  id              String   @id @default(cuid())
+  name            String
+  note            String?
+  status          String   // draft, active, completed
+  emailTemplateId String
+  emailTemplate   EmailTemplate @relation(fields: [emailTemplateId], references: [id])
+  landingPageId   String
+  landingPage     LandingPageTemplate @relation(fields: [landingPageId], references: [id])
+  launchedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  targets         Target[]
+  events          TrackingEvent[]
+}
+
+model Target {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  status     String   @default("Pending") // Pending, Sent, Opened, Clicked, Submitted
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  events     TrackingEvent[]
+}
+
+model TrackingEvent {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  targetId   String
+  target     Target   @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  type       String   // sent, opened, clicked, submitted
+  timestamp  DateTime @default(now())
+}
+
+model Rule {
+  id                     String   @id @default(cuid())
+  ruleCode               String   @unique // "RULE-001", dst — kode singkat yang mudah dibaca
+  name                   String
+  description            String?
+  severity               String   // Low, Medium, High, Critical
+  mitreTechnique         String?
+  matchField             String   // url, user_agent, atau log_line
+  pattern                String   // regex pattern
+  thresholdCount         Int      @default(1)
+  thresholdWindowSeconds Int      @default(0)
+  enabled                Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
