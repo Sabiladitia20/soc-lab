@@ -115,13 +115,14 @@ model Target {
 }
 
 model TrackingEvent {
-  id         String   @id @default(cuid())
-  campaignId String
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  targetId   String
-  target     Target   @relation(fields: [targetId], references: [id], onDelete: Cascade)
-  type       String   // sent, opened, clicked, submitted
-  timestamp  DateTime @default(now())
+  id            String   @id @default(cuid())
+  campaignId    String
+  campaign      Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  targetId      String
+  target        Target   @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  type          String   // sent, opened, clicked, submitted
+  capturedData  String?  // JSON string of captured form fields (email, password, etc.)
+  timestamp     DateTime @default(now())
 }
 
 model Rule {

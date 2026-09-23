@@ -107,3 +107,65 @@ export function CampaignLaunchButton({ campaignId, campaignStatus, targetCount }
     </AlertDialog>
   )
 }
+
+import { Trash2 } from "lucide-react"
+import { deleteCampaign } from "../actions"
+
+export function CampaignDeleteButton({ campaignId, campaignName }: { campaignId: string, campaignName: string }) {
+  const [isPending, startTransition] = useTransition()
+  const [open, setOpen] = useState(false)
+  const router = useRouter()
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      try {
+        await deleteCampaign(campaignId)
+        toast.success(`Campaign "${campaignName}" berhasil dihapus.`)
+        router.push("/dashboard/phishing-campaigns")
+      } catch (error) {
+        toast.error("Gagal menghapus campaign.")
+        console.error(error)
+      } finally {
+        setOpen(false)
+      }
+    })
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" className="gap-2 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200">
+          <Trash2 className="w-4 h-4" />
+          Hapus
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Hapus Campaign</AlertDialogTitle>
+          <AlertDialogDescription className="space-y-2">
+            <span className="block">
+              Apakah kamu yakin ingin menghapus campaign <strong>&quot;{campaignName}&quot;</strong>?
+            </span>
+            <span className="block text-red-500 text-sm">
+              ⚠️ Semua data target dan tracking event pada campaign ini akan ikut terhapus. Aksi ini tidak bisa dibatalkan.
+            </span>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending}>Batal</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault()
+              handleDelete()
+            }}
+            disabled={isPending}
+            className="bg-red-600 hover:bg-red-700 text-white gap-2"
+          >
+            {isPending ? "Menghapus..." : "Ya, Hapus Campaign"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+

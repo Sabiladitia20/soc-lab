@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { CampaignLaunchButton } from "./campaign-detail-client"
+import { CampaignLaunchButton, CampaignDeleteButton } from "./campaign-detail-client"
 
 interface Props {
   params: {
@@ -65,7 +65,11 @@ export default async function CampaignDetailPage({ params }: Props) {
           },
         },
       },
-      events: true,
+      events: {
+        where: { type: "submitted" },
+        include: { target: true },
+        orderBy: { timestamp: "desc" },
+      },
     }
   })
 
@@ -106,11 +110,17 @@ export default async function CampaignDetailPage({ params }: Props) {
             )}
           </div>
           
-          <CampaignLaunchButton
-            campaignId={campaign.id}
-            campaignStatus={campaign.status}
-            targetCount={totalTargets}
-          />
+          <div className="flex items-center gap-2">
+            <CampaignDeleteButton
+              campaignId={campaign.id}
+              campaignName={campaign.name}
+            />
+            <CampaignLaunchButton
+              campaignId={campaign.id}
+              campaignStatus={campaign.status}
+              targetCount={totalTargets}
+            />
+          </div>
         </div>
 
         {/* Info Cards */}
@@ -235,7 +245,7 @@ export default async function CampaignDetailPage({ params }: Props) {
               <TableHeader className="bg-secondary/50">
                 <TableRow>
                   <TableHead>Nama</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>Email Target</TableHead>
                   <TableHead>Tracking Status</TableHead>
                   <TableHead>Last Event</TableHead>
                 </TableRow>
@@ -267,6 +277,62 @@ export default async function CampaignDetailPage({ params }: Props) {
             </Table>
           </div>
         </div>
+
+        {/* Captured Credentials Section */}
+        {campaign.events.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-red-500">⚠️ Captured Submissions ({campaign.events.length})</h2>
+              <span className="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full font-medium">Sensitive</span>
+            </div>
+            <div className="border border-red-500/20 rounded-lg bg-red-500/5 overflow-hidden">
+              <Table>
+                <TableHeader className="bg-red-500/10">
+                  <TableRow>
+                    <TableHead className="text-red-400">Target</TableHead>
+                    <TableHead className="text-red-400">Waktu Submit</TableHead>
+                    <TableHead className="text-red-400">Data yang Dicapture</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {campaign.events.map((event) => {
+                    let captured: Record<string, string> = {}
+                    try {
+                      if (event.capturedData) captured = JSON.parse(event.capturedData)
+                    } catch { /* ignore */ }
+                    return (
+                      <TableRow key={event.id} className="border-red-500/10">
+                        <TableCell className="font-medium">
+                          <div>{event.target.name}</div>
+                          <div className="text-xs text-muted-foreground">{event.target.email}</div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(event.timestamp).toLocaleString("id-ID", {
+                            day: "numeric", month: "short", year: "numeric",
+                            hour: "2-digit", minute: "2-digit"
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            {Object.entries(captured).map(([key, value]) => (
+                              <div key={key} className="flex items-start gap-2 text-xs">
+                                <span className="bg-secondary text-muted-foreground px-1.5 py-0.5 rounded font-mono shrink-0">{key}</span>
+                                <span className="text-red-300 font-mono break-all">{String(value) || '(kosong)'}</span>
+                              </div>
+                            ))}
+                            {Object.keys(captured).length === 0 && (
+                              <span className="text-muted-foreground text-xs">Form disubmit tanpa data</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
         
       </div>
     </MainLayout>

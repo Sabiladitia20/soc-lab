@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Check, ChevronRight, FileType, Trash2, ShieldAlert } from "lucide-react"
+import { useState, useTransition } from "react"
+import { Check, ChevronRight, FileType, Trash2, ShieldAlert, Mail, Eye, Globe, CheckCircle2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,6 +16,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { createCampaign } from "../../actions"
 
 type EmailTemplate = {
@@ -42,7 +48,7 @@ interface Props {
 
 export function CampaignBuilderClient({ emailTemplates, landingPages }: Props) {
   const [step, setStep] = useState(1)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const [formData, setFormData] = useState({
     name: "",
     note: "",
@@ -50,6 +56,9 @@ export function CampaignBuilderClient({ emailTemplates, landingPages }: Props) {
     landingPageId: "",
     targets: [] as { name: string; email: string }[]
   })
+
+  // Step 2 specific state
+  const [previewEmail, setPreviewEmail] = useState<EmailTemplate | null>(null)
 
   // Step 3 specific state
   const [targetName, setTargetName] = useState("")
@@ -81,38 +90,75 @@ export function CampaignBuilderClient({ emailTemplates, landingPages }: Props) {
     }))
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!consentChecked) return
-    setIsSubmitting(true)
-    try {
+    startTransition(async () => {
       await createCampaign(formData)
-    } catch (e) {
-      console.error(e)
-      setIsSubmitting(false)
-    }
+    })
   }
 
   const selectedEmail = emailTemplates.find(t => t.id === formData.emailTemplateId)
   const selectedLandingPage = landingPages.find(t => t.id === formData.landingPageId)
 
+  const getDifficultyConfig = (difficulty: string) => {
+    switch (difficulty.toLowerCase()) {
+      case "easy":
+        return { color: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20", dot: "bg-emerald-400", label: "Easy" }
+      case "medium":
+        return { color: "bg-amber-500/10 text-amber-400 border-amber-500/20", dot: "bg-amber-400", label: "Medium" }
+      case "hard":
+        return { color: "bg-red-500/10 text-red-400 border-red-500/20", dot: "bg-red-400", label: "Hard" }
+      default:
+        return { color: "bg-secondary text-muted-foreground border-border", dot: "bg-muted-foreground", label: difficulty }
+    }
+  }
+
+  const getCategoryIcon = (category: string) => {
+    switch (category.toLowerCase()) {
+      case "credential harvesting":
+        return "🔐"
+      case "billing scam":
+        return "💳"
+      case "notification scam":
+        return "🔔"
+      case "software update":
+        return "⚙️"
+      default:
+        return "📧"
+    }
+  }
+
+  const stepLabels = ["Info Dasar", "Pilih Template", "Target", "Review"]
+
   return (
     <div className="flex flex-col gap-8">
-      {/* Stepper Indicator */}
-      <div className="flex items-center gap-2 text-sm font-medium">
-        {[1, 2, 3, 4].map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <div className={`flex items-center justify-center w-6 h-6 rounded-full \${step === s ? 'bg-primary text-primary-foreground' : step > s ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
-              {step > s ? <Check className="w-4 h-4" /> : s}
+      {/* Stepper Indicator - Enhanced */}
+      <div className="flex items-center gap-0">
+        {stepLabels.map((label, i) => {
+          const s = i + 1
+          const isActive = step === s
+          const isCompleted = step > s
+          return (
+            <div key={s} className="flex items-center flex-1 last:flex-initial">
+              <div className="flex items-center gap-2.5">
+                <div className={`
+                  flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all duration-300
+                  ${isActive ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110' : ''}
+                  ${isCompleted ? 'bg-primary/20 text-primary' : ''}
+                  ${!isActive && !isCompleted ? 'bg-secondary text-muted-foreground' : ''}
+                `}>
+                  {isCompleted ? <Check className="w-4 h-4" /> : s}
+                </div>
+                <span className={`text-sm font-medium hidden sm:inline ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                  {label}
+                </span>
+              </div>
+              {s < 4 && (
+                <div className={`flex-1 h-[2px] mx-3 rounded-full transition-colors ${isCompleted ? 'bg-primary/40' : 'bg-border'}`} />
+              )}
             </div>
-            <span className={step === s ? "text-foreground" : "text-muted-foreground"}>
-              {s === 1 && "Info Dasar"}
-              {s === 2 && "Pilih Template"}
-              {s === 3 && "Target"}
-              {s === 4 && "Review"}
-            </span>
-            {s < 4 && <ChevronRight className="w-4 h-4 text-muted-foreground mx-2" />}
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
@@ -150,48 +196,161 @@ export function CampaignBuilderClient({ emailTemplates, landingPages }: Props) {
           </div>
         )}
 
-        {/* STEP 2 */}
+        {/* STEP 2 - Enhanced Template Selection */}
         {step === 2 && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div>
               <h2 className="text-lg font-semibold mb-1">Pilih Template</h2>
-              <p className="text-sm text-muted-foreground">Pilih email pengelabuan dan landing page palsu yang akan digunakan.</p>
+              <p className="text-sm text-muted-foreground">Pilih email phishing dan landing page yang akan digunakan untuk simulasi.</p>
             </div>
             
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Kolom Kiri: Email Templates */}
-              <div className="space-y-4">
-                <h3 className="font-medium text-foreground border-b border-border pb-2">1. Email Template</h3>
-                <div className="grid gap-3 max-h-[400px] overflow-y-auto pr-2">
-                  {emailTemplates.map(tpl => (
+            {/* Section 1: Email Template */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground text-sm">Email Template</h3>
+                  <p className="text-xs text-muted-foreground">Pilih template email phishing yang ingin dikirim ke target</p>
+                </div>
+                {selectedEmail && (
+                  <Badge className="ml-auto bg-emerald-500/10 text-emerald-400 border-emerald-500/20 gap-1.5">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Terpilih
+                  </Badge>
+                )}
+              </div>
+
+              <div className="grid gap-3 max-h-[320px] overflow-y-auto pr-1 custom-scrollbar">
+                {emailTemplates.map(tpl => {
+                  const isSelected = formData.emailTemplateId === tpl.id
+                  const diffConfig = getDifficultyConfig(tpl.difficulty)
+                  return (
                     <div 
                       key={tpl.id}
                       onClick={() => setFormData(prev => ({...prev, emailTemplateId: tpl.id}))}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all \${formData.emailTemplateId === tpl.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-background hover:border-primary/50'}`}
+                      className={`
+                        group relative p-4 rounded-xl border-2 cursor-pointer transition-all duration-200
+                        ${isSelected 
+                          ? 'border-primary bg-primary/5 shadow-md shadow-primary/10' 
+                          : 'border-transparent bg-background hover:bg-secondary/50 hover:border-border'
+                        }
+                      `}
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-semibold text-sm line-clamp-1">{tpl.name}</span>
-                        <Badge variant="outline" className="text-[10px]">{tpl.difficulty}</Badge>
+                      {/* Selection indicator */}
+                      <div className={`
+                        absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+                        ${isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30 bg-transparent'}
+                      `}>
+                        {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                       </div>
-                      <div className="text-xs text-muted-foreground line-clamp-1 mb-1">From: {tpl.sender}</div>
-                      <div className="text-xs text-muted-foreground line-clamp-1">Subject: {tpl.subject}</div>
+
+                      <div className="flex items-start gap-3 pr-8">
+                        {/* Category emoji icon */}
+                        <div className="w-10 h-10 rounded-lg bg-secondary/80 flex items-center justify-center text-lg shrink-0">
+                          {getCategoryIcon(tpl.category)}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="font-semibold text-sm text-foreground line-clamp-1">{tpl.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className={`text-[10px] border ${diffConfig.color} gap-1`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${diffConfig.dot}`} />
+                              {diffConfig.label}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground font-normal">
+                              {tpl.category}
+                            </Badge>
+                          </div>
+                          <div className="space-y-0.5">
+                            <div className="text-xs text-muted-foreground line-clamp-1 flex items-center gap-1.5">
+                              <span className="text-muted-foreground/60 font-medium min-w-[36px]">From</span>
+                              <span className="text-foreground/70">{tpl.sender}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground line-clamp-1 flex items-center gap-1.5">
+                              <span className="text-muted-foreground/60 font-medium min-w-[36px]">Subj</span>
+                              <span className="text-foreground/70">{tpl.subject}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Preview button */}
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-center"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setPreviewEmail(tpl)
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                  ))}
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+              <div className="relative flex justify-center">
+                <span className="bg-card px-4 text-xs text-muted-foreground uppercase tracking-widest">Langkah berikutnya</span>
+              </div>
+            </div>
+
+            {/* Section 2: Landing Page Template */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
+                  <Globe className="w-4 h-4" />
                 </div>
+                <div>
+                  <h3 className="font-semibold text-foreground text-sm">Landing Page Template</h3>
+                  <p className="text-xs text-muted-foreground">Halaman palsu yang ditampilkan saat target mengklik link phishing</p>
+                </div>
+                {selectedLandingPage && (
+                  <Badge className="ml-auto bg-emerald-500/10 text-emerald-400 border-emerald-500/20 gap-1.5">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Terpilih
+                  </Badge>
+                )}
               </div>
 
-              {/* Kolom Kanan: Landing Pages */}
-              <div className="space-y-4">
-                <h3 className="font-medium text-foreground border-b border-border pb-2">2. Landing Page Template</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2">
-                  {landingPages.map(lp => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {landingPages.map(lp => {
+                  const isSelected = formData.landingPageId === lp.id
+                  return (
                     <div 
                       key={lp.id}
                       onClick={() => setFormData(prev => ({...prev, landingPageId: lp.id}))}
-                      className={`rounded-lg border cursor-pointer transition-all overflow-hidden flex flex-col \${formData.landingPageId === lp.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-background hover:border-primary/50'}`}
+                      className={`
+                        group relative rounded-xl border-2 cursor-pointer transition-all duration-200 overflow-hidden flex flex-col
+                        ${isSelected 
+                          ? 'border-primary shadow-md shadow-primary/10' 
+                          : 'border-transparent hover:border-border'
+                        }
+                      `}
                     >
-                      <div className="h-[100px] bg-secondary/30 relative overflow-hidden flex items-center justify-center border-b border-border">
-                        <div className="absolute inset-0 pointer-events-none opacity-50">
+                      {/* Selection overlay */}
+                      {isSelected && (
+                        <div className="absolute top-2.5 right-2.5 z-20 w-6 h-6 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                          <Check className="w-3.5 h-3.5 text-primary-foreground" />
+                        </div>
+                      )}
+
+                      {/* Preview thumbnail */}
+                      <div className={`
+                        h-[120px] bg-secondary/30 relative overflow-hidden flex items-center justify-center
+                        ${isSelected ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}
+                        transition-opacity duration-200
+                      `}>
+                        <div className="absolute inset-0 pointer-events-none">
                           <iframe
                             srcDoc={lp.htmlContent}
                             title={`Preview ${lp.name}`}
@@ -199,19 +358,40 @@ export function CampaignBuilderClient({ emailTemplates, landingPages }: Props) {
                             style={{ width: "400%", height: "400%", border: "none", transform: "scale(0.25)", transformOrigin: "0 0" }}
                           />
                         </div>
-                        <FileType className="w-6 h-6 text-muted-foreground/30 absolute z-[-1]" />
+                        <FileType className="w-6 h-6 text-muted-foreground/20 absolute z-[-1]" />
+                        
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                          <span className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 px-3 py-1.5 rounded-full backdrop-blur-sm">
+                            {isSelected ? "✓ Terpilih" : "Klik untuk memilih"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="p-3">
-                        <div className="font-semibold text-sm line-clamp-1 mb-1">{lp.name}</div>
+
+                      {/* Info */}
+                      <div className={`p-3 ${isSelected ? 'bg-primary/5' : 'bg-background'} transition-colors`}>
+                        <div className="font-semibold text-sm line-clamp-1 mb-1.5">{lp.name}</div>
                         <Badge variant="secondary" className="text-[10px]">{lp.category}</Badge>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
             </div>
 
-            <div className="flex justify-between pt-4 border-t border-border mt-8">
+            {/* Summary bar if both selected */}
+            {selectedEmail && selectedLandingPage && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                <p className="text-sm text-emerald-400">
+                  <span className="font-medium">{selectedEmail.name}</span>
+                  <span className="text-emerald-400/60 mx-2">→</span>
+                  <span className="font-medium">{selectedLandingPage.name}</span>
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-between pt-4 border-t border-border">
               <Button variant="outline" onClick={handlePrev}>&larr; Kembali</Button>
               <Button onClick={handleNext} disabled={!formData.emailTemplateId || !formData.landingPageId}>Lanjut &rarr;</Button>
             </div>
@@ -332,6 +512,9 @@ export function CampaignBuilderClient({ emailTemplates, landingPages }: Props) {
 
               <div className="space-y-4">
                 <div className="bg-background border border-border p-4 rounded-lg flex gap-4 items-center">
+                  <div className="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                    <Mail className="w-5 h-5" />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs text-muted-foreground mb-1">Email Template</div>
                     <div className="font-medium text-foreground line-clamp-1">{selectedEmail?.name}</div>
@@ -380,14 +563,48 @@ export function CampaignBuilderClient({ emailTemplates, landingPages }: Props) {
             </div>
 
             <div className="flex justify-between pt-4 border-t border-border mt-8">
-              <Button variant="outline" onClick={handlePrev} disabled={isSubmitting}>&larr; Kembali</Button>
-              <Button onClick={handleSubmit} disabled={!consentChecked || isSubmitting}>
-                {isSubmitting ? "Menyimpan..." : "Simpan sebagai Draft"}
+              <Button variant="outline" onClick={handlePrev} disabled={isPending}>&larr; Kembali</Button>
+              <Button onClick={handleSubmit} disabled={!consentChecked || isPending}>
+                {isPending ? "Menyimpan..." : "Simpan sebagai Draft"}
               </Button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Email Preview Dialog */}
+      <Dialog open={!!previewEmail} onOpenChange={(open) => !open && setPreviewEmail(null)}>
+        <DialogContent className="max-w-3xl h-[80vh] flex flex-col p-0 overflow-hidden bg-background">
+          <DialogHeader className="p-6 border-b border-border pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-muted-foreground" />
+              Preview: {previewEmail?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 pt-4 flex-1 flex flex-col overflow-hidden">
+            <div className="bg-card border border-border rounded-t-lg p-4 space-y-2">
+              <div className="grid grid-cols-[80px_1fr] items-center gap-2 text-sm">
+                <span className="text-muted-foreground font-medium">From:</span>
+                <span className="text-foreground">{previewEmail?.sender}</span>
+              </div>
+              <div className="grid grid-cols-[80px_1fr] items-center gap-2 text-sm">
+                <span className="text-muted-foreground font-medium">Subject:</span>
+                <span className="text-foreground font-medium">{previewEmail?.subject}</span>
+              </div>
+            </div>
+            <div className="flex-1 bg-white border border-t-0 border-border rounded-b-lg overflow-hidden relative">
+              {previewEmail && (
+                <iframe
+                  srcDoc={previewEmail.bodyHtml}
+                  title={`Preview of ${previewEmail.name}`}
+                  sandbox="allow-same-origin"
+                  className="w-full h-full border-none bg-white"
+                />
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

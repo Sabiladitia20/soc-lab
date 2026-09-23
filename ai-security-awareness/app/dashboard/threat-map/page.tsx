@@ -1,11 +1,5 @@
-import { MainLayout } from "@/components/layout/main-layout"
+import { redirect } from "next/navigation"
 
-export default function Page() {
-  return (
-    <MainLayout>
-      <div className="p-6">
-        <h1 className="text-2xl font-bold capitalize">Page Under Construction</h1>
-      </div>
-    </MainLayout>
-  )
+export default function ThreatMapPage() {
+  redirect("/dashboard")
 }

@@ -223,6 +223,17 @@ async function main() {
     else if (scenario.subject.toLowerCase().includes('invoice') || scenario.subject.toLowerCase().includes('payment')) category = 'Billing Scam';
     else if (scenario.subject.toLowerCase().includes('delivery') || scenario.subject.toLowerCase().includes('paket')) category = 'Notification Scam';
 
+    let bodyHtml = scenario.body;
+    
+    // Append links with the TRACKING_LINK placeholder
+    if (scenario.links && scenario.links.length > 0) {
+      bodyHtml += '<div style="margin-top: 24px; text-align: left;">';
+      for (const link of scenario.links) {
+        bodyHtml += `<a href="{{TRACKING_LINK}}" style="display: inline-block; padding: 12px 24px; background-color: #0066cc; color: white; text-decoration: none; border-radius: 4px; font-weight: bold; margin-bottom: 10px;">${link.text}</a><br/>`;
+      }
+      bodyHtml += '</div>';
+    }
+
     await prisma.emailTemplate.create({
       data: {
         name: `${scenario.senderName} - ${scenario.subject}`,
@@ -230,7 +241,7 @@ async function main() {
         difficulty,
         sender: `${scenario.senderName} <${scenario.senderEmail}>`,
         subject: scenario.subject,
-        bodyHtml: scenario.body
+        bodyHtml
       }
     });
   }

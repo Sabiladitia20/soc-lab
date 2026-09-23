@@ -105,3 +105,17 @@ export async function launchCampaign(campaignId: string) {
 
   return { success: true }
 }
+
+export async function deleteCampaign(campaignId: string) {
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+  })
+  if (!campaign) throw new Error("Campaign not found")
+
+  await prisma.campaign.delete({
+    where: { id: campaignId },
+  })
+
+  revalidatePath("/dashboard/phishing-campaigns")
+  return { success: true }
+}

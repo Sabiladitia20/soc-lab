@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Eye, ExternalLink, Plus, Search, Mail, FileType } from "lucide-react"
+import { useState, useTransition } from "react"
+import { Eye, ExternalLink, Plus, Search, Mail, FileType, Trash2, MoreHorizontal, Rocket } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
@@ -27,6 +27,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { deleteCampaign } from "../actions"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
 
 // Minimal types mirroring Prisma types
 type EmailTemplate = {
@@ -64,8 +84,10 @@ export function PhishingCampaignsClient({ campaigns, emailTemplates, landingPage
   const [emailSearch, setEmailSearch] = useState("")
   const [emailCategory, setEmailCategory] = useState("all")
   const [emailDifficulty, setEmailDifficulty] = useState("all")
-  
   const [previewEmail, setPreviewEmail] = useState<EmailTemplate | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<CampaignWithTargetCount | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   // Filter logic for email templates
   const filteredEmails = emailTemplates.filter((tpl) => {
@@ -90,6 +112,38 @@ export function PhishingCampaignsClient({ campaigns, emailTemplates, landingPage
       default:
         return "bg-secondary text-foreground hover:bg-secondary/80"
     }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "draft":
+        return <Badge variant="secondary" className="uppercase text-[10px] tracking-wider">Draft</Badge>
+      case "active":
+        return <Badge className="bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 border-0 uppercase text-[10px] tracking-wider">Active</Badge>
+      case "completed":
+        return <Badge className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 border-0 uppercase text-[10px] tracking-wider">Completed</Badge>
+      default:
+        return <Badge variant="secondary" className="uppercase text-[10px] tracking-wider">{status}</Badge>
+    }
+  }
+
+  const handleDelete = (campaign: CampaignWithTargetCount) => {
+    setDeleteTarget(campaign)
+  }
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return
+    startTransition(async () => {
+      try {
+        await deleteCampaign(deleteTarget.id)
+        toast.success(`Campaign "${deleteTarget.name}" berhasil dihapus.`)
+        router.refresh()
+      } catch {
+        toast.error("Gagal menghapus campaign.")
+      } finally {
+        setDeleteTarget(null)
+      }
+    })
   }
 
   return (
@@ -130,19 +184,39 @@ export function PhishingCampaignsClient({ campaigns, emailTemplates, landingPage
                 </TableHeader>
                 <TableBody>
                   {campaigns.map((c) => (
-                    <TableRow key={c.id}>
+                    <TableRow key={c.id} className="group">
                       <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell>{getStatusBadge(c.status)}</TableCell>
                       <TableCell>
-                        <Badge variant={c.status === "draft" ? "secondary" : "default"}>
-                          {c.status.toUpperCase()}
-                        </Badge>
+                        <span className="text-muted-foreground">{c._count.targets}</span> targets
                       </TableCell>
-                      <TableCell>{c._count.targets} targets</TableCell>
-                      <TableCell>{new Date(c.createdAt).toLocaleDateString("id-ID")}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(c.createdAt).toLocaleDateString("id-ID", {
+                          day: "numeric", month: "short", year: "numeric"
+                        })}
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => window.location.href = `/dashboard/phishing-campaigns/${c.id}`}>
-                          Lihat Detail
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => window.location.href = `/dashboard/phishing-campaigns/${c.id}`}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Lihat Detail
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleDelete(c)}
+                              className="text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Hapus Campaign
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -311,6 +385,36 @@ export function PhishingCampaignsClient({ campaigns, emailTemplates, landingPage
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Campaign</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Apakah kamu yakin ingin menghapus campaign <strong>&quot;{deleteTarget?.name}&quot;</strong>?
+              </span>
+              <span className="block text-red-500 text-sm">
+                ⚠️ Semua data target dan tracking event pada campaign ini akan ikut terhapus. Aksi ini tidak bisa dibatalkan.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                confirmDelete()
+              }}
+              disabled={isPending}
+              className="bg-red-600 hover:bg-red-700 text-white gap-2"
+            >
+              {isPending ? "Menghapus..." : "Ya, Hapus Campaign"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

@@ -16,7 +16,12 @@ import {
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
-  ListChecks
+  ListChecks,
+  HelpCircle,
+  Terminal,
+  KeyRound,
+  Gamepad2,
+  Link2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -26,6 +31,10 @@ const navigationGroups = [
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { name: "Learn", href: "/learn", icon: BookOpen },
+      { name: "Quiz Arena", href: "/simulator/quiz", icon: HelpCircle },
+      { name: "Password Checker", href: "/simulator/checker", icon: KeyRound },
+      { name: "Link Inspector", href: "/simulator/link-inspector", icon: Link2 },
+      { name: "Mini Games", href: "/games", icon: Gamepad2 },
     ],
   },
   {
@@ -34,7 +43,6 @@ const navigationGroups = [
       { name: "Incidents", href: "/dashboard/incidents", icon: AlertTriangle },
       { name: "Rules", href: "/dashboard/rules", icon: ListChecks },
       { name: "MITRE ATT&CK", href: "/dashboard/mitre", icon: Shield },
-      { name: "Threat Map", href: "/dashboard/threat-map", icon: Globe },
       { name: "Phishing Campaign", href: "/dashboard/phishing-campaigns", icon: Target },
     ],
   },
@@ -42,6 +50,7 @@ const navigationGroups = [
     label: "AI",
     items: [
       { name: "Assistant", href: "/assistant", icon: Bot },
+      { name: "Prompt Sandbox", href: "/simulator/prompt-sandbox", icon: Terminal },
     ],
   },
   {

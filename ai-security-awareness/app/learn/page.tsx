@@ -1,115 +1,204 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import { Search, Clock } from "lucide-react"
-import { articles, ArticleCategory } from "@/lib/mock-data"
+import {
+  Search,
+  BookOpen,
+  Clock,
+  ArrowRight,
+  Calendar,
+  FileText,
+  RefreshCw,
+  PenLine
+} from "lucide-react"
 import { MainLayout } from "@/components/layout/main-layout"
-
-const categories: ArticleCategory[] = [
-  "All",
-  "Phishing AI",
-  "Deepfake & Voice Cloning",
-  "Prompt Injection",
-  "Social Engineering",
-]
+import { Button } from "@/components/ui/button"
+import { getAllArticles, ArticleItem } from "./_actions/article-actions"
+import { ArticleFormDialog } from "./_components/article-form-dialog"
 
 export default function LearnPage() {
+  const [articles, setArticles] = useState<ArticleItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeCategory, setActiveCategory] = useState<ArticleCategory>("All")
 
-  const filteredArticles = useMemo(() => articles.filter((article) => {
-    const matchesSearch = article.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          article.excerpt.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCategory = activeCategory === "All" || article.category === activeCategory
-    return matchesSearch && matchesCategory
-  }), [searchQuery, activeCategory])
+  const fetchArticles = async () => {
+    setIsLoading(true)
+    try {
+      const data = await getAllArticles()
+      setArticles(data)
+    } catch (e) {
+      console.error("Failed to load articles:", e)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchArticles()
+  }, [])
+
+  // Filter articles based on search query
+  const filteredArticles = useMemo(() => {
+    if (!searchQuery.trim()) return articles
+    const q = searchQuery.toLowerCase()
+    return articles.filter((article) => {
+      return (
+        article.title.toLowerCase().includes(q) ||
+        article.excerpt.toLowerCase().includes(q) ||
+        article.content.toLowerCase().includes(q)
+      )
+    })
+  }, [articles, searchQuery])
 
   return (
     <MainLayout>
-    <div className="flex-1 space-y-8 p-6 pt-8 max-w-7xl mx-auto w-full">
-      {/* Header section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">Learn</h1>
-          <p className="text-sm text-muted-foreground">
-            Pelajari ancaman siber berbasis AI
-          </p>
-        </div>
+      <div className="flex-1 space-y-6 max-w-6xl mx-auto w-full pb-16 pt-2">
+        {/* Header Bar */}
+        <div className="border-b border-border/50 pb-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-100 flex items-center gap-2.5">
+                <BookOpen className="w-7 h-7 text-cyan-400" />  Artikel & Edukasi Keamanan
+              </h1>
+              
+            </div>
 
-        {/* Search Bar (Topbar style) */}
-        <div className="flex-1 max-w-md w-full">
-          <div className="flex items-center w-full gap-2 px-3 py-2 text-sm text-foreground bg-secondary/50 border border-border rounded-md transition-colors focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Cari artikel..."
-              className="flex-1 bg-transparent border-none outline-none placeholder:text-muted-foreground"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            <div className="flex items-center gap-3 shrink-0">
+              <ArticleFormDialog onArticleCreated={fetchArticles} />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Filter Categories */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-        {categories.map((category) => (
-          <button
-            key={category}
-            onClick={() => setActiveCategory(category)}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-              activeCategory === category
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground border border-transparent hover:border-border"
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
+        {/* Search Bar & Stats */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Cari artikel berdasarkan judul atau materi..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#101724] border border-[#1f2b3e] rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+            />
+          </div>
 
-      {/* Article Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredArticles.length > 0 ? (
-          filteredArticles.map((article) => (
-            <Link href={`/learn/${article.slug}`} key={article.slug} className="group outline-none">
-              <div className="flex flex-col h-full bg-card rounded-xl border border-border p-5 transition-all duration-300 group-hover:border-primary/50 group-hover:shadow-md group-hover:-translate-y-1 group-focus-visible:border-primary group-focus-visible:ring-1 group-focus-visible:ring-primary">
-                {/* Badge */}
-                <div className="mb-4">
-                  <span className="inline-flex items-center rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">
-                    {article.category}
-                  </span>
-                </div>
-                
-                {/* Content */}
-                <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-lg leading-tight line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+          <div className="flex items-center gap-3 text-xs text-slate-400">
+            <span>
+              Total: <strong>{filteredArticles.length}</strong> artikel
+            </span>
+            <span>•</span>
+            <button
+              onClick={fetchArticles}
+              className="flex items-center gap-1 hover:text-cyan-400 transition-colors text-xs"
+              title="Muat ulang daftar"
+            >
+              <RefreshCw className="w-3 h-3" /> Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Content View */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 py-6">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="bg-[#101724]/60 border border-[#1f2b3e] rounded-2xl p-5 h-44 animate-pulse space-y-3"
+              >
+                <div className="w-3/4 h-5 bg-slate-800 rounded-lg" />
+                <div className="w-full h-4 bg-slate-800 rounded-lg" />
+                <div className="w-1/2 h-3 bg-slate-800 rounded-lg mt-6" />
+              </div>
+            ))}
+          </div>
+        ) : filteredArticles.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredArticles.map((article) => (
+              <Link
+                key={article.id}
+                href={`/learn/${article.slug}`}
+                className="group bg-[#101724] hover:bg-[#151f30] border border-[#1e2a3c] hover:border-cyan-500/50 rounded-2xl p-5 transition-all duration-200 flex flex-col justify-between shadow-md hover:shadow-cyan-950/20 relative overflow-hidden"
+              >
+                {article.coverImage && (
+                  <div className="-mx-5 -mt-5 mb-4 h-36 overflow-hidden bg-slate-900 border-b border-[#1e2a3c]">
+                    <img
+                      src={article.coverImage}
+                      alt={article.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                      onError={(e) => {
+                        ;(e.target as HTMLImageElement).parentElement!.style.display = "none"
+                      }}
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <h2 className="text-base font-bold text-slate-100 group-hover:text-cyan-300 transition-colors line-clamp-2 leading-snug">
                     {article.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground line-clamp-3">
+                  </h2>
+                  <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
                     {article.excerpt}
                   </p>
                 </div>
 
-                {/* Footer */}
-                <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>{article.readTime}</span>
+                <div className="pt-4 mt-4 border-t border-[#182334] flex items-center justify-between text-[11px] text-slate-400">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-slate-500" />
+                      {article.readTime}
+                    </span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-slate-500" />
+                      {new Date(article.createdAt).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric"
+                      })}
+                    </span>
                   </div>
-                  <span>{new Date(article.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+
+                  <span className="text-cyan-400 font-semibold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                    Baca <ArrowRight className="w-3 h-3" />
+                  </span>
                 </div>
-              </div>
-            </Link>
-          ))
+              </Link>
+            ))}
+          </div>
         ) : (
-          <div className="col-span-full py-12 text-center text-muted-foreground bg-secondary/20 rounded-xl border border-dashed border-border">
-            <p>Tidak ada artikel yang ditemukan.</p>
+          /* Clean Professional Empty State */
+          <div className="py-20 px-4 text-center bg-[#101724]/40 rounded-2xl border border-dashed border-[#1f2b3e] space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto text-cyan-400">
+              <FileText className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1.5 max-w-md mx-auto">
+              <h3 className="text-base font-semibold text-slate-200">
+                Belum ada artikel yang diterbitkan
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Mulai dokumentasikan panduan penanganan ancaman siber, SOP keamanan, atau materi edukasi untuk tim internal Anda.
+              </p>
+            </div>
+
+            <div className="pt-2">
+              <ArticleFormDialog
+                onArticleCreated={fetchArticles}
+                trigger={
+                  <Button className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl px-4 py-2 gap-2 text-xs shadow-md shadow-cyan-500/20">
+                    <PenLine className="w-4 h-4" /> + Tulis Artikel Pertama
+                  </Button>
+                }
+              />
+            </div>
           </div>
         )}
       </div>
-    </div>
     </MainLayout>
   )
 }
