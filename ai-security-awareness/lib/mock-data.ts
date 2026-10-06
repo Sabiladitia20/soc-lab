@@ -1,6 +1,7 @@
 export type IncidentSeverity = "Low" | "Medium" | "High" | "Critical"
 export type IncidentStatus = "New" | "Acknowledged" | "Closed"
 export type IncidentSLA = "OK" | "Breached"
+export type IncidentVerdict = "TP" | "FP" | null
 
 export interface Incident {
   id: string
@@ -19,7 +20,12 @@ export interface Incident {
   mitreTechnique?: string
   rawDetails?: string
   updatedAt?: string
+  verdict?: IncidentVerdict
+  verdictBy?: string | null
+  verdictNote?: string | null
+  verdictAt?: string | null
 }
+
 
 export function generateIncidents(count: number = 30): Incident[] {
   const incidents: Incident[] = []

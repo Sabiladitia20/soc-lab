@@ -9,10 +9,7 @@ import {
   Target,
   AlertTriangle,
   Shield,
-  Globe,
   Bot,
-  Info,
-  Settings,
   ChevronLeft,
   ChevronRight,
   ShieldAlert,
@@ -21,24 +18,34 @@ import {
   Terminal,
   KeyRound,
   Gamepad2,
-  Link2
+  Link2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navigationGroups = [
   {
-    label: "Utama",
+    label: "OVERVIEW",
     items: [
       { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: "LEARNING",
+    items: [
       { name: "Learn", href: "/learn", icon: BookOpen },
       { name: "Quiz Arena", href: "/simulator/quiz", icon: HelpCircle },
-      { name: "Password Checker", href: "/simulator/checker", icon: KeyRound },
-      { name: "Link Inspector", href: "/simulator/link-inspector", icon: Link2 },
       { name: "Mini Games", href: "/games", icon: Gamepad2 },
     ],
   },
   {
-    label: "SOC Demo",
+    label: "SECURITY TOOLS",
+    items: [
+      { name: "Password Checker", href: "/simulator/checker", icon: KeyRound },
+      { name: "Link Inspector", href: "/simulator/link-inspector", icon: Link2 },
+    ],
+  },
+  {
+    label: "SOC LAB",
     items: [
       { name: "Incidents", href: "/dashboard/incidents", icon: AlertTriangle },
       { name: "Rules", href: "/dashboard/rules", icon: ListChecks },
@@ -51,13 +58,6 @@ const navigationGroups = [
     items: [
       { name: "Assistant", href: "/assistant", icon: Bot },
       { name: "Prompt Sandbox", href: "/simulator/prompt-sandbox", icon: Terminal },
-    ],
-  },
-  {
-    label: "Lainnya",
-    items: [
-      { name: "About", href: "/about", icon: Info },
-      { name: "Settings", href: "/settings", icon: Settings },
     ],
   },
 ]
@@ -96,7 +96,10 @@ export function Sidebar() {
                 </span>
               )}
               {group.items.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+                const isActive =
+                  item.href === "/dashboard"
+                    ? pathname === "/dashboard"
+                    : pathname === item.href || pathname.startsWith(item.href + "/")
                 
                 return (
                   <Link

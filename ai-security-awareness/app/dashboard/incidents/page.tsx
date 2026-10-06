@@ -26,7 +26,12 @@ export default async function IncidentsPage() {
     mitreTechnique: inc.mitreTechnique ?? undefined,
     rawDetails: inc.rawDetails ?? undefined,
     updatedAt: inc.updatedAt.toISOString(),
+    verdict: (inc.verdict as "TP" | "FP" | null) ?? null,
+    verdictBy: inc.verdictBy ?? null,
+    verdictNote: inc.verdictNote ?? null,
+    verdictAt: inc.verdictAt?.toISOString() ?? null,
   }))
+
 
   return (
     <MainLayout>

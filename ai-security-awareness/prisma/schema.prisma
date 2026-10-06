@@ -54,6 +54,10 @@ model Incident {
   ruleName        String?
   mitreTechnique  String?
   rawDetails      String?
+  verdict         String?  // null = Unlabeled, "TP" = True Positive, "FP" = False Positive
+  verdictBy       String?  // Who labeled the incident
+  verdictNote     String?  // Optional analyst note for the verdict
+  verdictAt       DateTime? // When the verdict was set
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
